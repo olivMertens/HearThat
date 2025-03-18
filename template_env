@@ -1,0 +1,6 @@
+AZURE_OPENAI_ENDPOINT=https://xxxx-generation.openai.azure.com/
+AZURE_OPENAI_KEY=
+AZURE_SPEECH_KEY=
+AZURE_SPEECH_REGION=westeurope
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://xxxx-docintelligence.cognitiveservices.azure.com/
+AZURE_DOCUMENT_INTELLIGENCE_KEY=
