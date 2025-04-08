@@ -56,5 +56,11 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
+# IDEs and editors
+.vscode/
+
 # Cython debug symbols
 cython_debug/
+/data/hachette/ScreenTime/Screen Time - Lisa Guernsey_full_text_chapters
+/data/hachette/Theory of teenagers/A New Theory of Teenagers_ Seven Transform - Christa Santangelo_full_text_chapters
+/data/hachette/output-*.md
