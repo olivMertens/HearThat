@@ -1,0 +1,36 @@
+# Azure OpenAI Configuration
+AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
+AZURE_OPENAI_KEY=your-openai-key-here
+AZURE_OPENAI_MODEL=gpt-4o-mini
+AZURE_OPENAI_DEPLOYMENT_NAME=gpt-4o-mini
+AZURE_OPENAI_API_VERSION=2025-03-01-preview
+
+# Azure Speech Services Configuration
+AZURE_SPEECH_KEY=your-speech-key-here
+AZURE_SPEECH_REGION=westeurope
+
+# Additional Speech Services (Optional - used in 2-hachette-azure-openai.ipynb)
+AZURE_SPEECH_OPENAI_KEY=your-speech-openai-key-here
+AZURE_SPEECH_OPENAI_REGION=swedencentral
+
+# Azure Document Intelligence
+AZURE_DOCUMENT_INTELLIGENCE_ENDPOINT=https://your-service.cognitiveservices.azure.com/
+AZURE_DOCUMENT_INTELLIGENCE_KEY=your-document-intelligence-key-here
+
+# Azure Translation Services (Used in 4-hachette-extratranslate-summary.ipynb)
+AZURE_TRANSLATOR_KEY=your-translator-key-here
+AZURE_TRANSLATOR_DOCUMENT_ENDPOINT=https://your-service.cognitiveservices.azure.com/
+
+# Azure Storage Configuration (Used in 4-hachette-extratranslate-summary.ipynb)
+AZURE_STORAGE_ACCOUNT_NAME=your-storage-account-name
+AZURE_STORAGE_ACCOUNT_KEY=your-storage-account-key
+AZURE_STORAGE_SAS_OUTPUT=your-sas-token-url
+
+# Container URL (Used in 2-hachette-azure-openai.ipynb and 2-hachette-azure-speech.ipynb)
+AZURE_DESTINATION_CONTAINER_URL=your-container-sas-url
+
+# Notebook usages:
+# 1-hachette-ingest.ipynb: Uses Document Intelligence and OpenAI services
+# 2-hachette-azure-openai.ipynb: Uses OpenAI for text processing and Speech OpenAI for audio generation
+# 2-hachette-azure-speech.ipynb: Uses regular Speech Services
+# 4-hachette-extratranslate-summary.ipynb: Uses Translation services and Storage for document translation
