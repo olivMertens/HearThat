@@ -290,33 +290,6 @@ def _build_groups(settings: Settings) -> list[dict[str, object]]:
     return out
 
 
-def _identity_info(settings: Settings) -> dict[str, str]:
-    has_sp = bool(os.environ.get("AZURE_CLIENT_ID") and os.environ.get("AZURE_CLIENT_SECRET"))
-    has_keys = any(
-        [
-            settings.use_openai_key,
-            settings.use_speech_key,
-            settings.use_docintel_key,
-            settings.use_translator_key,
-        ]
-    )
-    has_cli = bool(os.environ.get("AZURE_TENANT_ID")) or not has_sp
-    if has_keys:
-        sign_in = "Using access keys (development)"
-    elif has_sp:
-        sign_in = "Signed in with an application identity"
-    elif has_cli:
-        sign_in = "Signed in with your user account"
-    else:
-        sign_in = "Not signed in yet"
-    tenant = os.environ.get("AZURE_TENANT_ID") or "(default for your account)"
-    return {
-        "Sign-in": sign_in,
-        "Mode": "Development" if settings.is_dev else "Production",
-        "Organisation": tenant,
-    }
-
-
 def _persist_env_file(updates: dict[str, str], env_path: Path) -> None:
     """Write/update keys in the .env file (creates it if missing)."""
     existing: list[str] = []
@@ -351,7 +324,6 @@ async def settings_page(request: Request, saved: int = 0) -> HTMLResponse:
         {
             "active_page": "settings",
             "groups": _build_groups(settings),
-            "identity": _identity_info(settings),
             "env_file_exists": env_path.exists(),
             "is_dev": settings.is_dev,
             "message": "Settings applied." if saved else None,
