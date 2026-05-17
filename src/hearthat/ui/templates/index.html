@@ -109,6 +109,7 @@
     </thead>
     <tbody id="jobs-tbody" class="divide-y">
       {% for job in jobs %}
+        {% set audio_files = audio_by_job.get(job.id, []) %}
         {% include "partials/job_row.html" %}
       {% endfor %}
     </tbody>

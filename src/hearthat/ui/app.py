@@ -89,11 +89,13 @@ async def _run_pipeline(job: AudioJob) -> None:
 async def index(request: Request) -> HTMLResponse:
     jobs = await list_jobs()
     settings = get_settings()
+    audio_by_job = {j.id: _collect_audio(j) for j in jobs}
     return TEMPLATES.TemplateResponse(
         request,
         "index.html",
         {
             "jobs": jobs,
+            "audio_by_job": audio_by_job,
             "default_voice": settings.hearthat_default_voice,
             "fallback_voice": settings.hearthat_fallback_voice,
             "active_page": "home",
@@ -426,7 +428,7 @@ async def create_job(
     await insert_job(job)
     asyncio.create_task(_run_pipeline(job))
     return TEMPLATES.TemplateResponse(
-        request, "partials/job_row.html", {"job": job}
+        request, "partials/job_row.html", {"job": job, "audio_files": []}
     )
 
 
@@ -436,8 +438,54 @@ async def job_progress(request: Request, job_id: str) -> HTMLResponse:
     if job is None:
         raise HTTPException(status_code=404)
     return TEMPLATES.TemplateResponse(
-        request, "partials/job_row.html", {"job": job}
+        request,
+        "partials/job_row.html",
+        {"job": job, "audio_files": _collect_audio(job)},
     )
+
+
+_PLAYABLE_EXTS = {".mp3", ".wav", ".ogg", ".m4a"}
+_DOWNLOAD_EXTS = _PLAYABLE_EXTS | {".zip"}
+
+
+def _collect_audio(job: AudioJob) -> list[dict[str, str]]:
+    """List playable audio + download archives produced for a completed job."""
+    if job.result_dir is None or not job.result_dir.exists():
+        return []
+    items: list[dict[str, str]] = []
+    for path in sorted(job.result_dir.rglob("*")):
+        if not path.is_file():
+            continue
+        suffix = path.suffix.lower()
+        if suffix not in _DOWNLOAD_EXTS:
+            continue
+        rel = path.relative_to(job.result_dir).as_posix()
+        items.append(
+            {
+                "name": path.name,
+                "rel": rel,
+                "kind": "audio" if suffix in _PLAYABLE_EXTS else "archive",
+                "size_human": human_size(path.stat().st_size),
+            }
+        )
+    return items
+
+
+@app.get("/jobs/{job_id}/file/{rel_path:path}")
+async def job_file(job_id: str, rel_path: str) -> FileResponse:
+    job = await get_job(job_id)
+    if job is None or job.result_dir is None:
+        raise HTTPException(status_code=404)
+    base = job.result_dir.resolve()
+    candidate = (base / rel_path).resolve()
+    # Path traversal guard.
+    try:
+        candidate.relative_to(base)
+    except ValueError as exc:  # pragma: no cover - defensive
+        raise HTTPException(status_code=400, detail="Invalid path") from exc
+    if not candidate.is_file():
+        raise HTTPException(status_code=404)
+    return FileResponse(candidate, filename=candidate.name)
 
 
 @app.get("/jobs/{job_id}/audio/{chapter}")

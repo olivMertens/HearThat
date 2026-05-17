@@ -111,7 +111,25 @@ async def _submit_batch(ssml: str, *, output_dir: Path) -> Path:
     output_dir.mkdir(parents=True, exist_ok=True)
     zip_path = output_dir / f"{job_id}.zip"
     zip_path.write_bytes(zip_resp.content)
-    return zip_path
+
+    # Extract MP3s next to the ZIP so the UI can play them directly.
+    extracted_mp3: Path | None = None
+    try:
+        import zipfile
+
+        with zipfile.ZipFile(zip_path) as zf:
+            for info in zf.infolist():
+                if info.is_dir() or not info.filename.lower().endswith(".mp3"):
+                    continue
+                name = Path(info.filename).name
+                target = output_dir / name
+                target.write_bytes(zf.read(info))
+                if extracted_mp3 is None:
+                    extracted_mp3 = target
+    except Exception:  # pragma: no cover - best effort
+        logger.exception("Failed to extract MP3 from batch synthesis ZIP")
+
+    return extracted_mp3 or zip_path
 
 
 async def synthesize_batch(
