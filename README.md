@@ -157,4 +157,5 @@ uv run ruff check . ; uv run mypy src ; uv run pytest -q
 
 ## 📝 License
 
-MIT
+[MIT](LICENSE) © 2026 Olivier Mertens — provided **as-is** for demo and educational purposes.
+"MAI-Voice-1", "DragonHD", "Azure", "Azure OpenAI", "Azure AI Speech", "Azure AI Document Intelligence" and "Microsoft Foundry" are trademarks of Microsoft Corporation; this project is an independent demo and is not affiliated with or endorsed by Microsoft.
