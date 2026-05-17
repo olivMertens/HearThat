@@ -35,6 +35,26 @@
   </div>
   {% endif %}
 
+  <div class="mt-4 flex flex-wrap items-center gap-3 rounded-md border border-slate-200 bg-white px-4 py-3">
+    <a href="/settings/export"
+       class="text-sm font-medium text-violet-700 hover:text-violet-900 underline-offset-2 hover:underline">
+      &#x2B07; Export current settings (hearthat.env)
+    </a>
+    <span class="text-slate-300">·</span>
+    <form method="post" action="/settings/import" enctype="multipart/form-data"
+          class="flex flex-wrap items-center gap-2">
+      <label class="text-sm text-slate-700">Import .env:</label>
+      <input type="file" name="env_file" accept=".env,text/plain" required
+             class="text-sm file:mr-2 file:rounded file:border-0 file:bg-violet-50 file:px-3 file:py-1 file:text-violet-700 hover:file:bg-violet-100" />
+      <label class="inline-flex items-center gap-1 text-xs text-slate-600">
+        <input type="checkbox" name="persist" value="1" checked
+               class="rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
+        save to .env
+      </label>
+      <button type="submit" class="btn-secondary text-sm">Apply</button>
+    </form>
+  </div>
+
   <form method="post" action="/settings" class="mt-4 space-y-6">
     {% for group in groups %}
     <fieldset>
