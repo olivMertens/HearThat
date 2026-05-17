@@ -1,9 +1,12 @@
 name: CI
 
+# CI is disabled for the demo. Re-enable by restoring the push/pull_request
+# triggers below. Manual runs still work via the Actions tab.
 on:
-  push:
-    branches: [main]
-  pull_request:
+  workflow_dispatch:
+  # push:
+  #   branches: [main]
+  # pull_request:
 
 jobs:
   lint-and-test:
