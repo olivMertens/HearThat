@@ -116,6 +116,10 @@ flowchart LR
 
 ## 🤝 Contributing
 
+See [`docs/DEVELOPMENT.md`](docs/DEVELOPMENT.md) for the full dev setup
+(local launch, Service Principal fallback to avoid `az login`, RBAC,
+troubleshooting).
+
 ```powershell
 uv sync --all-extras
 uv run pre-commit install

@@ -8,8 +8,13 @@ services:
     env_file:
       - .env
     volumes:
-      - ./data:/data
-      - ${USERPROFILE:-$HOME}/.azure:/home/hearthat/.azure:ro
+      - type: bind
+        source: ./data
+        target: /data
+      - type: bind
+        source: ${AZURE_CONFIG_DIR:-${USERPROFILE:-${HOME}}/.azure}
+        target: /home/hearthat/.azure
+        read_only: true
     restart: unless-stopped
 
   jupyter:
@@ -26,6 +31,13 @@ services:
     env_file:
       - .env
     volumes:
-      - .:/app
-      - ./data:/data
-      - ${USERPROFILE:-$HOME}/.azure:/home/hearthat/.azure:ro
+      - type: bind
+        source: .
+        target: /app
+      - type: bind
+        source: ./data
+        target: /data
+      - type: bind
+        source: ${AZURE_CONFIG_DIR:-${USERPROFILE:-${HOME}}/.azure}
+        target: /home/hearthat/.azure
+        read_only: true
