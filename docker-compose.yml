@@ -1,0 +1,31 @@
+services:
+  hearthat-ui:
+    build: .
+    image: hearthat:latest
+    container_name: hearthat-ui
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/data
+      - ${USERPROFILE:-$HOME}/.azure:/home/hearthat/.azure:ro
+    restart: unless-stopped
+
+  jupyter:
+    profiles: ["notebooks"]
+    image: hearthat:latest
+    build: .
+    container_name: hearthat-jupyter
+    command: >
+      uv run --with jupyterlab jupyter lab
+      --ip=0.0.0.0 --port=8888 --no-browser
+      --ServerApp.token='' --ServerApp.password=''
+    ports:
+      - "8888:8888"
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - ./data:/data
+      - ${USERPROFILE:-$HOME}/.azure:/home/hearthat/.azure:ro

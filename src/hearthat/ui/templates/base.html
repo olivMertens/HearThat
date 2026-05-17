@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en" class="h-full bg-slate-50">
+  <head>
+    <meta charset="utf-8" />
+    <title>{% block title %}HearThat{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='favicon.svg') }}" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <style>
+      .gradient-bg { background: linear-gradient(135deg, #6D28D9 0%, #06B6D4 100%); }
+    </style>
+  </head>
+  <body class="h-full text-slate-800">
+    <header class="gradient-bg text-white shadow">
+      <div class="mx-auto max-w-5xl flex items-center gap-3 px-6 py-5">
+        <img src="{{ url_for('static', path='logo.svg') }}" alt="HearThat" class="h-10 w-10" />
+        <div>
+          <h1 class="text-2xl font-semibold tracking-tight">HearThat</h1>
+          <p class="text-sm text-white/80">Turn PDF books into multi-voice audiobooks.</p>
+        </div>
+      </div>
+    </header>
+    <main class="mx-auto max-w-5xl px-6 py-8 space-y-8">
+      {% block content %}{% endblock %}
+    </main>
+    <footer class="text-center text-xs text-slate-400 py-6">
+      HearThat · Azure AI · MIT License
+    </footer>
+  </body>
+</html>
