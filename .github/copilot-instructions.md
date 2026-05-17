@@ -51,6 +51,13 @@ All async Azure HTTP calls use:
 - Cache layers via `COPY pyproject.toml uv.lock` → `uv sync` → `COPY src`.
 - Non-root user `hearthat` (uid 1001), healthcheck on `/healthz`.
 
+## CI / GitHub Actions
+- **CI is currently disabled** for this demo (`.github/workflows/ci.yml` runs on
+  `workflow_dispatch` only). Do **not** re-enable the `push` / `pull_request`
+  triggers, and do **not** add new workflows (deploy, release, scheduled jobs,
+  etc.) unless explicitly asked.
+- Local checks before pushing: `uv run ruff check . ; uv run ruff format --check . ; uv run mypy src ; uv run pytest -q`.
+
 ## Repo layout
 - Source: `src/hearthat/` (package), UI in `src/hearthat/ui/`.
 - Notebooks: `notebooks/` (3 demos using the same package, kernel `hearthat`).
