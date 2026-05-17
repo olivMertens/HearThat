@@ -128,30 +128,42 @@ _SETTINGS_GROUPS: list[dict[str, object]] = [
                 "Service address",
                 "https://<your-foundry>.openai.azure.com/",
                 "Where HearThat sends text for analysis and narration planning.",
+                False,
             ),
             (
                 "AZURE_OPENAI_API_VERSION",
                 "Service version",
                 "2024-12-01-preview",
                 "Leave the default unless your administrator says otherwise.",
+                False,
             ),
             (
                 "AZURE_OPENAI_DEPLOYMENT_SUMMARY",
                 "Summary model",
                 "gpt-5.4-mini",
                 "Used for chapter summaries and scene analysis.",
+                False,
             ),
             (
                 "AZURE_OPENAI_DEPLOYMENT_TTS",
                 "Voice model (OpenAI backend)",
                 "gpt-4o-mini-tts",
                 "Only used when you pick the OpenAI voice backend.",
+                False,
             ),
             (
                 "AZURE_OPENAI_DEPLOYMENT_TRANSCRIBE",
                 "Transcription model",
                 "gpt-4o-mini-transcribe",
                 "Used when re-listening to audio for quality checks.",
+                False,
+            ),
+            (
+                "AZURE_OPENAI_API_KEY",
+                "Access key (development only)",
+                "",
+                "Optional. Used locally when your account can't sign in to this service.",
+                True,
             ),
         ],
     },
@@ -163,24 +175,35 @@ _SETTINGS_GROUPS: list[dict[str, object]] = [
                 "Service address",
                 "https://eastus.api.cognitive.microsoft.com/",
                 "Where HearThat sends text to turn into audio.",
+                False,
             ),
             (
                 "AZURE_SPEECH_REGION",
                 "Region",
                 "eastus",
                 "The premium narration voice is currently only available in East US.",
+                False,
             ),
             (
                 "HEARTHAT_DEFAULT_VOICE",
                 "Preferred voice",
                 "en-us-Iris:MAI-Voice-1",
                 "Used when you don't pick one in the form.",
+                False,
             ),
             (
                 "HEARTHAT_FALLBACK_VOICE",
                 "Backup voice",
                 "en-US-Ava:DragonHDOmniLatestNeural",
                 "Used if the preferred voice is unavailable.",
+                False,
+            ),
+            (
+                "AZURE_SPEECH_API_KEY",
+                "Access key (development only)",
+                "",
+                "Optional. Used locally when your account can't sign in to this service.",
+                True,
             ),
         ],
     },
@@ -192,26 +215,51 @@ _SETTINGS_GROUPS: list[dict[str, object]] = [
                 "Document reader address",
                 "https://<your-docintel>.cognitiveservices.azure.com/",
                 "Reads PDFs and extracts the text. Optional — a built-in reader is used otherwise.",
+                False,
+            ),
+            (
+                "AZURE_DOCINTEL_API_KEY",
+                "Document reader key (development only)",
+                "",
+                "Optional. Used locally when your account can't sign in.",
+                True,
             ),
             (
                 "AZURE_TRANSLATOR_ENDPOINT",
                 "Translator address",
                 "https://<your-translator>.cognitiveservices.azure.com/",
                 "Optional. Only needed if you want translated audiobooks.",
+                False,
+            ),
+            (
+                "AZURE_TRANSLATOR_API_KEY",
+                "Translator key (development only)",
+                "",
+                "Optional. Used locally when your account can't sign in.",
+                True,
             ),
             (
                 "AZURE_STORAGE_ACCOUNT_NAME",
                 "Storage account name",
                 "mystorageacct",
                 "Optional. Used by the translation workflow.",
+                False,
             ),
         ],
     },
 ]
 
 
-def _editable_keys() -> list[str]:
-    return [name for g in _SETTINGS_GROUPS for (name, *_rest) in g["fields"]]  # type: ignore[misc]
+def _editable_keys(*, include_secret: bool) -> list[str]:
+    keys: list[str] = []
+    for g in _SETTINGS_GROUPS:
+        for entry in g["fields"]:  # type: ignore[index]
+            name = entry[0]
+            secret = entry[4] if len(entry) > 4 else False
+            if secret and not include_secret:
+                continue
+            keys.append(name)
+    return keys
 
 
 def _build_groups(settings: Settings) -> list[dict[str, object]]:
@@ -219,7 +267,12 @@ def _build_groups(settings: Settings) -> list[dict[str, object]]:
     out: list[dict[str, object]] = []
     for group in _SETTINGS_GROUPS:
         fields = []
-        for name, label, placeholder, hint in group["fields"]:  # type: ignore[misc]
+        for entry in group["fields"]:  # type: ignore[index]
+            name, label, placeholder, hint = entry[0], entry[1], entry[2], entry[3]
+            secret = entry[4] if len(entry) > 4 else False
+            if secret and not settings.is_dev:
+                # Hide all key fields in production.
+                continue
             value = dump.get(name, "")
             fields.append(
                 {
@@ -228,6 +281,7 @@ def _build_groups(settings: Settings) -> list[dict[str, object]]:
                     "placeholder": placeholder,
                     "hint": hint,
                     "value": str(value) if value is not None else "",
+                    "secret": bool(secret),
                 }
             )
         out.append({"title": group["title"], "fields": fields})
@@ -236,8 +290,18 @@ def _build_groups(settings: Settings) -> list[dict[str, object]]:
 
 def _identity_info(settings: Settings) -> dict[str, str]:
     has_sp = bool(os.environ.get("AZURE_CLIENT_ID") and os.environ.get("AZURE_CLIENT_SECRET"))
+    has_keys = any(
+        [
+            settings.use_openai_key,
+            settings.use_speech_key,
+            settings.use_docintel_key,
+            settings.use_translator_key,
+        ]
+    )
     has_cli = bool(os.environ.get("AZURE_TENANT_ID")) or not has_sp
-    if has_sp:
+    if has_keys:
+        sign_in = "Using access keys (development)"
+    elif has_sp:
         sign_in = "Signed in with an application identity"
     elif has_cli:
         sign_in = "Signed in with your user account"
@@ -246,6 +310,7 @@ def _identity_info(settings: Settings) -> dict[str, str]:
     tenant = os.environ.get("AZURE_TENANT_ID") or "(default for your account)"
     return {
         "Sign-in": sign_in,
+        "Mode": "Development" if settings.is_dev else "Production",
         "Organisation": tenant,
     }
 
@@ -286,6 +351,7 @@ async def settings_page(request: Request, saved: int = 0) -> HTMLResponse:
             "groups": _build_groups(settings),
             "identity": _identity_info(settings),
             "env_file_exists": env_path.exists(),
+            "is_dev": settings.is_dev,
             "message": "Settings applied." if saved else None,
         },
     )
@@ -295,8 +361,9 @@ async def settings_page(request: Request, saved: int = 0) -> HTMLResponse:
 async def update_settings_route(request: Request) -> RedirectResponse:
     form = await request.form()
     persist = bool(form.get("persist"))
+    settings = get_settings()
     updates: dict[str, str] = {}
-    for key in _editable_keys():
+    for key in _editable_keys(include_secret=settings.is_dev):
         if key in form:
             value = str(form[key]).strip()
             updates[key] = value
