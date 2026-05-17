@@ -7,11 +7,16 @@ Supports three voice families:
 * **DragonHDOmni / HD** — ``parameters="temperature=...;top_p=..."`` plus
   ``mstts:express-as`` with natural-language style descriptions.
 * **DragonHDLatest MultiTalker** — ``<mstts:turn speaker="...">`` blocks.
+
+``build_narration_ssml`` is the context-aware variant used by the pipeline:
+it adds breaks at paragraphs / headings, wraps quoted dialog in a softer
+express-as style, and emphasises Markdown headings.
 """
 
 from __future__ import annotations
 
 import html
+import re
 from collections.abc import Iterable
 
 from .models import ProsodyProfile, VoiceSpec
@@ -20,6 +25,11 @@ SSML_NS = (
     'xmlns="http://www.w3.org/2001/10/synthesis" '
     'xmlns:mstts="http://www.w3.org/2001/mstts"'
 )
+
+# Match Markdown headings (#, ##, ###) at the start of a line.
+_HEADING_RE = re.compile(r"^(#{1,6})\s+(.+?)\s*#*\s*$")
+# Match double-quoted English dialog OR French guillemets « ... ».
+_DIALOG_RE = re.compile(r'(?:"([^"\n]{2,400}?)"|«\s*([^»\n]{2,400}?)\s*»)')
 
 
 def _params_attr(prosody: ProsodyProfile | None) -> str:
@@ -47,7 +57,7 @@ def build_ssml(
     *,
     prosody: ProsodyProfile | None = None,
 ) -> str:
-    """Build a single-voice SSML document for ``text``."""
+    """Build a single-voice SSML document for ``text`` (no context analysis)."""
     escaped = html.escape(text)
     body = escaped
     if voice.style:
@@ -59,6 +69,85 @@ def build_ssml(
     return (
         f'<speak version="1.0" {SSML_NS} xml:lang="{voice.locale}">'
         f'<voice name="{voice.voice_name}"{params}>{body}</voice></speak>'
+    )
+
+
+# ---------------------------------------------------------------------------
+# Context-aware narration SSML
+# ---------------------------------------------------------------------------
+
+
+def _render_dialog(text: str, dialog_style: str) -> str:
+    """Wrap quoted segments in a softer express-as style; escape the rest."""
+    parts: list[str] = []
+    last = 0
+    for m in _DIALOG_RE.finditer(text):
+        before = text[last : m.start()]
+        if before:
+            parts.append(html.escape(before))
+        spoken = m.group(1) or m.group(2) or ""
+        if spoken:
+            parts.append(
+                f'<mstts:express-as style="{html.escape(dialog_style)}">'
+                f"&#8220;{html.escape(spoken)}&#8221;</mstts:express-as>"
+            )
+        last = m.end()
+    tail = text[last:]
+    if tail:
+        parts.append(html.escape(tail))
+    return "".join(parts) if parts else html.escape(text)
+
+
+def _render_paragraph(text: str, *, dialog_style: str) -> str:
+    """Render a single paragraph: heading / dialog detection + breaks."""
+    text = text.strip()
+    if not text:
+        return ""
+    heading = _HEADING_RE.match(text)
+    if heading:
+        title = heading.group(2).strip()
+        # Heading: short pause, mild emphasis, longer pause after.
+        return (
+            '<break time="500ms"/>'
+            f'<emphasis level="moderate">{html.escape(title)}</emphasis>'
+            '<break time="700ms"/>'
+        )
+    body = _render_dialog(text, dialog_style=dialog_style)
+    # End every paragraph with a longer pause for breathing.
+    return f"{body}<break time='450ms'/>"
+
+
+def build_narration_ssml(
+    text: str,
+    voice: VoiceSpec,
+    *,
+    prosody: ProsodyProfile | None = None,
+    dialog_style: str = "narration-relaxed",
+) -> str:
+    """Build a context-aware narration SSML document.
+
+    The text is split on blank lines; each paragraph is annotated with:
+
+    * ``<emphasis>`` + breaks around Markdown headings (``# Title``).
+    * a softer ``mstts:express-as`` around quoted dialog.
+    * a 450 ms ``<break>`` between paragraphs.
+
+    The outer voice carries the user-selected ``voice.style`` (if any) so the
+    overall tone is preserved while individual segments get local treatment.
+    """
+    paragraphs = re.split(r"\n\s*\n", text.strip())
+    rendered = "".join(
+        _render_paragraph(p, dialog_style=dialog_style) for p in paragraphs if p.strip()
+    )
+    if voice.style:
+        rendered = (
+            f'<mstts:express-as style="{html.escape(voice.style)}">'
+            f"{rendered}</mstts:express-as>"
+        )
+    params = _params_attr(prosody)
+    return (
+        f'<speak version="1.0" {SSML_NS} xml:lang="{voice.locale}">'
+        f'<voice name="{voice.voice_name}"{params}>{rendered}</voice></speak>'
     )
 
 

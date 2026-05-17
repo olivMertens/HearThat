@@ -56,6 +56,37 @@ class Settings(BaseSettings):
     hearthat_data_dir: Path = Field(default=Path("./data"))
     hearthat_db_path: Path = Field(default=Path("./hearthat.db"))
     hearthat_log_level: str = Field(default="INFO")
+    # ``dev`` accepts API keys as a passwordless fallback (handy for local
+    # development when Entra ID is not configured); ``prod`` ignores keys.
+    hearthat_env: str = Field(default="dev")
+
+    # ---------- Optional API keys (dev only) ----------
+    # These are only honoured when ``hearthat_env != 'prod'``. They are never
+    # required: when empty, the app uses ``DefaultAzureCredential``.
+    azure_openai_api_key: str = Field(default="")
+    azure_speech_api_key: str = Field(default="")
+    azure_docintel_api_key: str = Field(default="")
+    azure_translator_api_key: str = Field(default="")
+
+    @property
+    def is_dev(self) -> bool:
+        return self.hearthat_env.strip().lower() != "prod"
+
+    @property
+    def use_openai_key(self) -> bool:
+        return self.is_dev and bool(self.azure_openai_api_key)
+
+    @property
+    def use_speech_key(self) -> bool:
+        return self.is_dev and bool(self.azure_speech_api_key)
+
+    @property
+    def use_docintel_key(self) -> bool:
+        return self.is_dev and bool(self.azure_docintel_api_key)
+
+    @property
+    def use_translator_key(self) -> bool:
+        return self.is_dev and bool(self.azure_translator_api_key)
 
     @property
     def is_openai_configured(self) -> bool:

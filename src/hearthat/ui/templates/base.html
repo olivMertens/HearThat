@@ -9,23 +9,62 @@
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
     <style>
       .gradient-bg { background: linear-gradient(135deg, #6D28D9 0%, #06B6D4 100%); }
+      .gradient-text {
+        background: linear-gradient(135deg, #6D28D9 0%, #06B6D4 100%);
+        -webkit-background-clip: text; background-clip: text; color: transparent;
+      }
+      .btn-primary {
+        background: linear-gradient(135deg, #6D28D9 0%, #06B6D4 100%);
+        color: white; font-weight: 500;
+        padding: 0.55rem 1.25rem; border-radius: 0.5rem;
+        box-shadow: 0 4px 14px -2px rgba(109, 40, 217, 0.35);
+        transition: transform 120ms ease, box-shadow 120ms ease, opacity 120ms ease;
+      }
+      .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 6px 18px -2px rgba(6, 182, 212, 0.4); }
+      .btn-primary:active { transform: translateY(0); opacity: 0.95; }
+      .btn-secondary {
+        border: 1px solid #c4b5fd; color: #6D28D9; background: white;
+        font-weight: 500; padding: 0.5rem 1rem; border-radius: 0.5rem;
+        transition: background 120ms ease;
+      }
+      .btn-secondary:hover { background: #f5f3ff; }
+      .nav-link { color: rgba(255,255,255,0.85); transition: color 120ms ease; }
+      .nav-link:hover { color: white; }
+      .nav-link.active { color: white; font-weight: 600; border-bottom: 2px solid white; padding-bottom: 2px; }
     </style>
   </head>
-  <body class="h-full text-slate-800">
+  <body class="h-full text-slate-800 flex flex-col">
     <header class="gradient-bg text-white shadow">
-      <div class="mx-auto max-w-5xl flex items-center gap-3 px-6 py-5">
-        <img src="{{ url_for('static', path='logo.svg') }}" alt="HearThat" class="h-10 w-10" />
-        <div>
-          <h1 class="text-2xl font-semibold tracking-tight">HearThat</h1>
-          <p class="text-sm text-white/80">Turn PDF books into multi-voice audiobooks.</p>
-        </div>
+      <div class="mx-auto max-w-5xl flex items-center justify-between gap-3 px-6 py-5">
+        <a href="/" class="flex items-center gap-3">
+          <img src="{{ url_for('static', path='logo.svg') }}" alt="HearThat" class="h-10 w-10" />
+          <div>
+            <h1 class="text-2xl font-semibold tracking-tight">HearThat</h1>
+            <p class="text-sm text-white/80">Turn PDF books into multi-voice audiobooks.</p>
+          </div>
+        </a>
+        <nav class="flex items-center gap-5 text-sm">
+          <a href="/" class="nav-link {% if active_page == 'home' %}active{% endif %}">Audiobooks</a>
+          <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">Settings</a>
+        </nav>
       </div>
     </header>
-    <main class="mx-auto max-w-5xl px-6 py-8 space-y-8">
+    <main class="mx-auto max-w-5xl w-full px-6 py-8 space-y-8 flex-1">
       {% block content %}{% endblock %}
     </main>
-    <footer class="text-center text-xs text-slate-400 py-6">
-      HearThat · Azure AI · MIT License
+    <footer class="mt-8 border-t border-slate-200 bg-white">
+      <div class="gradient-bg h-1"></div>
+      <div class="mx-auto max-w-5xl px-6 py-5 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+        <div class="flex items-center gap-2">
+          <img src="{{ url_for('static', path='logo.svg') }}" alt="" class="h-5 w-5 opacity-80" />
+          <span><span class="gradient-text font-semibold">HearThat</span> · Azure AI · MIT License</span>
+        </div>
+        <div class="flex items-center gap-4">
+          <a href="/settings" class="hover:text-violet-700">Settings</a>
+          <a href="/healthz" class="hover:text-violet-700">Health</a>
+          <a href="https://github.com/olivMertens/hearthat" target="_blank" rel="noopener" class="hover:text-violet-700">GitHub</a>
+        </div>
+      </div>
     </footer>
   </body>
 </html>

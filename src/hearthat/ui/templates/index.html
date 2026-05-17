@@ -1,8 +1,21 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="rounded-xl bg-white p-6 shadow">
-  <h2 class="text-lg font-semibold mb-4">New audiobook</h2>
+  <div class="flex items-start justify-between gap-4 mb-4">
+    <div>
+      <h2 class="text-lg font-semibold">New audiobook</h2>
+      <p class="text-sm text-slate-500 mt-1">
+        Drop in a book, a chapter or notes. HearThat reads the atmosphere of every paragraph
+        and narrates it with the right tone, pauses and emphasis.
+      </p>
+    </div>
+    <span class="text-xs px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200 whitespace-nowrap">
+      Demo limits · {{ limits.max_size_human }} · up to {{ limits.max_pdf_pages }} PDF pages · up to {{ "{:,}".format(limits.max_text_chars) }} characters
+    </span>
+  </div>
+
   <form
+    id="job-form"
     hx-post="/jobs"
     hx-target="#jobs-tbody"
     hx-swap="afterbegin"
@@ -10,50 +23,70 @@
     class="space-y-4"
   >
     <div>
-      <label class="block text-sm font-medium mb-1">PDF file</label>
-      <input type="file" name="pdf" accept="application/pdf" required
+      <label class="block text-sm font-medium mb-1">Source document</label>
+      <input id="job-file" type="file" name="pdf"
+             accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
+             required
+             data-max-bytes="{{ limits.max_bytes }}"
              class="block w-full rounded border border-slate-300 px-3 py-2 text-sm" />
+      <p class="mt-1 text-xs text-slate-500">
+        Accepted: PDF, plain text (.txt) or Markdown (.md). Maximum {{ limits.max_size_human }}.
+      </p>
+      <p id="file-feedback" class="mt-1 text-xs hidden"></p>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
       <div>
-        <label class="block text-sm font-medium mb-1">TTS backend</label>
-        <select name="backend"
+        <label class="block text-sm font-medium mb-1">Voice style</label>
+        <select id="job-backend" name="backend"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-          <option value="azure_speech_mai" selected>MAI-Voice-1 (preview, narration)</option>
-          <option value="azure_speech_hd">DragonHD / Omni</option>
-          <option value="openai_tts">OpenAI gpt-4o-mini-tts</option>
+          <option value="azure_speech_mai" selected>Iris — natural narrator (recommended)</option>
+          <option value="azure_speech_hd">Ava — high-definition voice</option>
+          <option value="openai_tts">Alloy — short-form, prompt steerable</option>
         </select>
+        <p class="mt-1 text-xs text-slate-400">
+          The natural narrator gives the most expressive reading; the short-form voice is best
+          for quick previews under {{ "{:,}".format(limits.max_openai_chars) }} characters.
+        </p>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Voice name</label>
+        <label class="block text-sm font-medium mb-1">Voice name (optional)</label>
         <input type="text" name="voice_name"
                placeholder="{{ default_voice }}"
                class="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
+        <p class="mt-1 text-xs text-slate-400">Leave empty to use the recommended voice.</p>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Summary model</label>
+        <label class="block text-sm font-medium mb-1">Reading depth</label>
         <select name="summary_model"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
-          <option value="gpt-5.4-mini" selected>gpt-5.4-mini (reasoning)</option>
-          <option value="gpt-4.1-mini">gpt-4.1-mini (non-reasoning)</option>
-          <option value="gpt-5.5">gpt-5.5 (premium)</option>
+          <option value="gpt-5.4-mini" selected>Smart — best for most books</option>
+          <option value="gpt-4.1-mini">Fast — quicker but plainer</option>
+          <option value="gpt-5.5">Deep — slower, richer phrasing</option>
         </select>
       </div>
     </div>
     <div>
       <label class="block text-sm font-medium mb-1">
-        Style / instructions
-        <span class="text-xs text-slate-500">(MAI / HD: mstts:express-as · OpenAI: natural language)</span>
+        Mood instruction <span class="text-xs text-slate-500">(optional)</span>
       </label>
       <input type="text" name="style"
              placeholder="e.g. calm narrator, slightly amused"
              class="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
+      <p class="mt-1 text-xs text-slate-400">
+        HearThat already detects mood per paragraph; this overrides the overall tone.
+      </p>
     </div>
-    <button type="submit"
-            class="gradient-bg text-white font-medium px-5 py-2 rounded-md shadow hover:opacity-90">
-      Synthesise
-    </button>
+    <div class="flex items-center gap-3">
+      <button id="job-submit" type="submit" class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed" disabled>
+        Synthesise
+      </button>
+      <span id="form-hint" class="text-xs text-slate-500">Pick a file to get started.</span>
+    </div>
   </form>
+  <p class="mt-4 text-xs text-slate-400">
+    Smart narration: every paragraph is analysed for mood and dialogue, then read with matching
+    pauses, emphasis and tone — no SSML to write by hand.
+  </p>
 </section>
 
 <section class="rounded-xl bg-white p-6 shadow">
@@ -75,4 +108,64 @@
     </tbody>
   </table>
 </section>
+
+<script>
+  (function () {
+    const fileInput  = document.getElementById("job-file");
+    const submit     = document.getElementById("job-submit");
+    const feedback   = document.getElementById("file-feedback");
+    const hint       = document.getElementById("form-hint");
+    const form       = document.getElementById("job-form");
+    const allowedExt = ["pdf", "txt", "md", "markdown"];
+    const maxBytes   = parseInt(fileInput.dataset.maxBytes, 10) || 0;
+
+    function human(bytes) {
+      if (bytes < 1024) return bytes + " B";
+      if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+      return (bytes / (1024 * 1024)).toFixed(1) + " MB";
+    }
+    function show(msg, ok) {
+      feedback.textContent = msg;
+      feedback.classList.remove("hidden", "text-red-600", "text-emerald-600");
+      feedback.classList.add(ok ? "text-emerald-600" : "text-red-600");
+    }
+    function clearMsg() {
+      feedback.classList.add("hidden");
+      feedback.textContent = "";
+    }
+
+    function validate() {
+      const f = fileInput.files && fileInput.files[0];
+      if (!f) {
+        submit.disabled = true;
+        hint.textContent = "Pick a file to get started.";
+        clearMsg();
+        return false;
+      }
+      const ext = (f.name.split(".").pop() || "").toLowerCase();
+      if (!allowedExt.includes(ext)) {
+        submit.disabled = true;
+        hint.textContent = "Unsupported file type.";
+        show("Only PDF, .txt and .md files are accepted.", false);
+        return false;
+      }
+      if (maxBytes && f.size > maxBytes) {
+        submit.disabled = true;
+        hint.textContent = "File is too large for the demo.";
+        show("This file is " + human(f.size) + " — the demo accepts up to " + human(maxBytes) + ".", false);
+        return false;
+      }
+      submit.disabled = false;
+      hint.textContent = "Ready to synthesise.";
+      show("Looks good — " + f.name + " (" + human(f.size) + ").", true);
+      return true;
+    }
+
+    fileInput.addEventListener("change", validate);
+    form.addEventListener("submit", function (e) {
+      if (!validate()) e.preventDefault();
+    });
+    validate();
+  })();
+</script>
 {% endblock %}

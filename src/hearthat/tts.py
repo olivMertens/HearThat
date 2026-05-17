@@ -23,7 +23,8 @@ from tenacity import (
 from .auth import COGNITIVE_SCOPE, get_async_credential
 from .config import get_settings
 from .models import ProsodyProfile, TtsBackend, VoiceSpec
-from .ssml import build_ssml
+from .narration import analyse_scene, build_narration_ssml_from_plan
+from .ssml import build_narration_ssml
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +118,26 @@ async def synthesize_batch(
     voice: VoiceSpec,
     output_dir: Path,
     prosody: ProsodyProfile | None = None,
+    scene_analysis: bool = True,
 ) -> Path:
-    """Submit one SSML payload through Batch Synthesis and return the result zip."""
-    ssml = build_ssml(text, voice, prosody=prosody)
+    """Submit one SSML payload through Batch Synthesis and return the result zip.
+
+    When ``scene_analysis`` is ``True`` (default) and Azure OpenAI is
+    configured, an LLM pre-pass labels each paragraph (kind / mood / style /
+    pause / emphasis) and the SSML is built from that plan. Any failure
+    silently falls back to the regex-only builder so synthesis still succeeds.
+    """
+    ssml: str | None = None
+    if scene_analysis and get_settings().is_openai_configured:
+        try:
+            plan = await analyse_scene(text)
+            if plan.paragraphs:
+                ssml = build_narration_ssml_from_plan(text, plan, voice, prosody=prosody)
+                logger.info("Scene plan applied (%d paragraphs)", len(plan.paragraphs))
+        except Exception as exc:  # pragma: no cover - best-effort
+            logger.warning("Scene analysis failed (%s); falling back to regex SSML", exc)
+    if ssml is None:
+        ssml = build_narration_ssml(text, voice, prosody=prosody)
     return await _submit_batch(ssml, output_dir=output_dir)
 
 

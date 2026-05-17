@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .config import get_settings
 from .costs import build_cost
-from .ingest import ingest_pdf
+from .ingest import ingest_source
 from .models import Book, Cost, VoiceSpec
 from .summarize import summarise_book
 from .tts import synthesize
@@ -38,9 +38,9 @@ async def run_book(
         if on_progress is not None:
             await on_progress(phase, value)
 
-    # 1. Ingest
+    # 1. Ingest (PDF, TXT or Markdown)
     await _emit("ingest", 0.05)
-    book = await ingest_pdf(pdf_path)
+    book = await ingest_source(pdf_path)
     await _emit("ingest", 0.20)
 
     # 2. Summaries
