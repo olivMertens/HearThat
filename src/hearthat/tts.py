@@ -20,7 +20,7 @@ from tenacity import (
     wait_exponential,
 )
 
-from .auth import COGNITIVE_SCOPE, get_async_credential
+from .auth import aoai_client_kwargs, speech_auth_headers
 from .config import get_settings
 from .models import ProsodyProfile, TtsBackend, VoiceSpec
 from .narration import analyse_scene, build_narration_ssml_from_plan
@@ -40,7 +40,9 @@ _RETRY_KW: dict[str, Any] = {
 }
 
 
-async def _speech_token() -> str:
+async def _speech_token() -> str:  # pragma: no cover - legacy, kept for back-compat
+    from .auth import COGNITIVE_SCOPE, get_async_credential
+
     credential = get_async_credential()
     token = await credential.get_token(COGNITIVE_SCOPE)
     return token.token
@@ -73,8 +75,8 @@ async def _submit_batch(ssml: str, *, output_dir: Path) -> Path:
     )
     job_id = str(uuid.uuid4())
     url = f"{base}/texttospeech/batchsyntheses/{job_id}?api-version={BATCH_API_VERSION}"
-    token = await _speech_token()
-    headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
+    headers = await speech_auth_headers(settings)
+    headers["Content-Type"] = "application/json"
 
     async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
         async for attempt in AsyncRetrying(**_RETRY_KW):
@@ -158,16 +160,10 @@ async def synthesize_openai_tts(
     settings = get_settings()
     model = model or settings.azure_openai_deployment_tts
 
-    credential = get_async_credential()
-
-    async def token_provider() -> str:
-        token = await credential.get_token(COGNITIVE_SCOPE)
-        return token.token
-
     client = AsyncAzureOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=token_provider,
+        **aoai_client_kwargs(settings),
     )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)

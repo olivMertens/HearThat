@@ -19,7 +19,7 @@ from dataclasses import dataclass
 
 from openai import AsyncAzureOpenAI
 
-from .auth import COGNITIVE_SCOPE, get_async_credential
+from .auth import aoai_client_kwargs
 from .config import get_settings
 from .models import ProsodyProfile, VoiceSpec
 from .ssml import SSML_NS, _params_attr, _render_dialog
@@ -147,16 +147,11 @@ async def analyse_scene(text: str, *, model: str | None = None) -> ScenePlan:
         return ScenePlan(paragraphs=[])
 
     model = model or settings.azure_openai_deployment_summary
-    credential = get_async_credential()
-
-    async def token_provider() -> str:
-        token = await credential.get_token(COGNITIVE_SCOPE)
-        return token.token
 
     client = AsyncAzureOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=token_provider,
+        **aoai_client_kwargs(settings),
     )
 
     messages = [

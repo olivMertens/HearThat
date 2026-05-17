@@ -12,7 +12,7 @@ from collections.abc import Awaitable, Callable
 
 from openai import AsyncAzureOpenAI
 
-from .auth import COGNITIVE_SCOPE, get_async_credential
+from .auth import aoai_client_kwargs
 from .config import get_settings
 from .costs import build_cost
 from .models import Book, Cost
@@ -36,16 +36,10 @@ async def _aoai_client() -> AsyncAzureOpenAI:
     if not settings.is_openai_configured:
         raise RuntimeError("AZURE_OPENAI_ENDPOINT not configured")
 
-    credential = get_async_credential()
-
-    async def token_provider() -> str:
-        token = await credential.get_token(COGNITIVE_SCOPE)
-        return token.token
-
     return AsyncAzureOpenAI(
         azure_endpoint=settings.azure_openai_endpoint,
         api_version=settings.azure_openai_api_version,
-        azure_ad_token_provider=token_provider,
+        **aoai_client_kwargs(settings),
     )
 
 
