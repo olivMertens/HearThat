@@ -1,27 +1,63 @@
-{% set finished = job.status.value in ("completed", "failed") %}
+{% set status = job.status.value %}
+{% set finished = status in ("completed", "failed") %}
+{% set pct = (job.progress * 100) | round(0) | int %}
+{% set phase_labels = {
+  "pending": ("Queued", "⏳"),
+  "ingesting": ("Reading the document", "📖"),
+  "summarizing": ("Understanding chapters", "🧠"),
+  "synthesizing": ("Narrating with the chosen voice", "🎙️"),
+  "translating": ("Translating", "🌐"),
+  "completed": ("Ready to listen", "✓"),
+  "failed": ("Failed", "✗"),
+} %}
+{% set label, icon = phase_labels.get(status, (status, "•")) %}
 <tr
   id="job-{{ job.id }}"
+  class="align-top {% if status == 'failed' %}bg-rose-50/40{% elif status == 'completed' %}bg-emerald-50/40{% endif %}"
   {% if not finished %}
     hx-get="/jobs/{{ job.id }}/progress"
-    hx-trigger="every 2s"
+    hx-trigger="load delay:1.5s"
     hx-swap="outerHTML"
   {% endif %}
 >
-  <td class="py-2 pr-4 font-mono text-xs">{{ job.id }}</td>
-  <td class="py-2 pr-4 truncate max-w-xs">{{ job.source_path.name }}</td>
-  <td class="py-2 pr-4">{{ job.voice.voice_name }}</td>
-  <td class="py-2 pr-4">
-    {% if job.status.value == "completed" %}
-      <span class="text-emerald-700">✓ completed</span>
-    {% elif job.status.value == "failed" %}
-      <span class="text-rose-700" title="{{ job.error or '' }}">✗ failed</span>
+  <td class="py-3 pr-4 font-mono text-xs text-slate-500">{{ job.id[:8] }}</td>
+  <td class="py-3 pr-4 truncate max-w-xs" title="{{ job.source_path.name }}">
+    {{ job.source_path.name }}
+  </td>
+  <td class="py-3 pr-4 text-xs text-slate-600">{{ job.voice.voice_name }}</td>
+  <td class="py-3 pr-4 whitespace-nowrap">
+    {% if status == "completed" %}
+      <span class="inline-flex items-center gap-1 text-emerald-700 font-medium">
+        <span>✓</span><span>Ready</span>
+      </span>
+    {% elif status == "failed" %}
+      <span class="inline-flex items-center gap-1 text-rose-700 font-medium" title="{{ job.error or '' }}">
+        <span>✗</span><span>Failed</span>
+      </span>
     {% else %}
-      <span class="text-slate-700">{{ job.status.value }}</span>
+      <span class="inline-flex items-center gap-1 text-slate-700">
+        <svg class="animate-spin h-3.5 w-3.5 text-violet-600" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.25"></circle>
+          <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+        </svg>
+        <span>{{ icon }} {{ label }}</span>
+      </span>
     {% endif %}
   </td>
-  <td class="py-2 pr-4">
-    <div class="w-full bg-slate-200 rounded h-2 overflow-hidden">
-      <div class="gradient-bg h-2" style="width: {{ (job.progress * 100) | round(0) }}%"></div>
+  <td class="py-3 pr-4 w-72">
+    <div class="flex items-center gap-2">
+      <div class="flex-1 bg-slate-200 rounded-full h-2 overflow-hidden">
+        <div class="gradient-bg h-2 transition-all duration-500 ease-out"
+             style="width: {{ pct }}%"></div>
+      </div>
+      <span class="text-xs tabular-nums text-slate-600 w-9 text-right">{{ pct }}%</span>
     </div>
+    {% if status == "failed" and job.error %}
+      <p class="mt-1 text-xs text-rose-700 truncate" title="{{ job.error }}">{{ job.error }}</p>
+    {% elif status == "completed" %}
+      <p class="mt-1 text-xs text-emerald-700">
+        Audio saved to <span class="font-mono">{{ job.result_dir.name if job.result_dir else '' }}</span>
+      </p>
+    {% endif %}
   </td>
 </tr>

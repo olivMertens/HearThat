@@ -77,8 +77,14 @@
       </p>
     </div>
     <div class="flex items-center gap-3">
-      <button id="job-submit" type="submit" class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed" disabled>
-        Synthesise
+      <button id="job-submit" type="submit"
+              class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
+              disabled>
+        <svg id="submit-spinner" class="animate-spin h-4 w-4 hidden" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.3"></circle>
+          <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+        </svg>
+        <span id="submit-label">Synthesise</span>
       </button>
       <span id="form-hint" class="text-xs text-slate-500">Pick a file to get started.</span>
     </div>
@@ -163,8 +169,31 @@
 
     fileInput.addEventListener("change", validate);
     form.addEventListener("submit", function (e) {
-      if (!validate()) e.preventDefault();
+      if (!validate()) { e.preventDefault(); return; }
     });
+
+    // HTMX lifecycle: show spinner while uploading, reset form on success.
+    const spinner = document.getElementById("submit-spinner");
+    const label   = document.getElementById("submit-label");
+    form.addEventListener("htmx:beforeRequest", function () {
+      submit.disabled = true;
+      spinner.classList.remove("hidden");
+      label.textContent = "Uploading…";
+      hint.textContent  = "Starting your audiobook…";
+    });
+    form.addEventListener("htmx:afterRequest", function (e) {
+      spinner.classList.add("hidden");
+      label.textContent = "Synthesise";
+      if (e.detail && e.detail.successful) {
+        form.reset();
+        validate();
+        hint.textContent = "Job started — follow its progress below.";
+      } else {
+        submit.disabled = false;
+        hint.textContent = "Upload failed. Please try again.";
+      }
+    });
+
     validate();
   })();
 </script>
