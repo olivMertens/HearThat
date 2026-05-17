@@ -21,14 +21,18 @@ live progress, and listen to the result. Authentication is passwordless
 
 ## ✨ Features
 
-- 📄 **Multi-format ingestion** — PDF (Document Intelligence `prebuilt-layout` + `pypdf` fallback), `.txt` and `.md` directly, with demo upload limits and inline file validation
-- 🧠 **Reasoning-grade summaries** with `gpt-5.4-mini` (`reasoning_effort=minimal`)
-- 🎬 **Scene-aware narration** — a small LLM step labels every paragraph (heading / dialog / narration / action, mood, `mstts:express-as` style, pause and emphasis) **before** SSML is built, with graceful regex-only fallback
-- 🎙️ Three TTS backends: **MAI-Voice-1** (Iris, narration), **DragonHDOmni** (700+ voices), **gpt-4o-mini-tts** (prompt-steerable)
-- 🖼️ **Multimodal vision** describes figures so the narrator mentions them naturally
-- 🌍 **Batch translation** via Azure AI Translation Document
+- 📄 **Multi-format ingestion** — PDF via **Azure AI Document Intelligence** (`prebuilt-layout`, with `pypdf` fallback), plus native `.txt` and `.md`, with demo upload limits and inline file validation
+- 🧠 **Reasoning-grade summaries** — **Azure OpenAI in Microsoft Foundry** with `gpt-5.4-mini` (`reasoning_effort=minimal`)
+- 🎬 **Scene-aware narration** — a small LLM step (also Azure OpenAI) labels every paragraph (heading / dialog / narration / action, mood, `mstts:express-as` style, pause and emphasis) **before** SSML is built, with graceful regex-only fallback
+- 🎙️ Three TTS backends powered by **Azure AI Speech** and **Azure OpenAI**:
+  - **MAI-Voice-1** (Iris, audiobook narrator, preview) — Azure AI Speech Batch Synthesis
+  - **DragonHD / Omni** (700+ multilingual voices) — Azure AI Speech Batch Synthesis
+  - **gpt-4o-mini-tts** (prompt-steerable) — Azure OpenAI text-to-speech
+- 🖼️ **Multimodal vision** — Azure OpenAI vision describes figures so the narrator mentions them naturally
+- 🌍 **Batch translation** via **Azure AI Translator** (Document Translation 1.1)
 - 📊 **Live progress UI** — phase-aware status (`Reading the document` → `Understanding chapters` → `Narrating`), animated spinner, percentage bar, HTMX polling
-- ⚙️ **Env-aware settings page** — endpoints visible everywhere; API-key fields only appear in development mode (`HEARTHAT_ENV != prod`)
+- 🎧 **Inline MP3 player + downloads** — completed jobs expose `<audio>` players and download buttons (MP3 is extracted from Batch Synthesis ZIPs automatically)
+- ⚙️ **Env-aware Settings page** — endpoints visible everywhere; API-key fields only appear in development mode (`HEARTHAT_ENV != prod`)
 - 🔐 **Passwordless first** — `DefaultAzureCredential` everywhere, with optional `AZURE_*_API_KEY` fallback gated to development
 
 ## 🌍 Regions & models (snapshot 17 May 2026)
