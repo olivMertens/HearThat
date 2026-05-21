@@ -19,6 +19,61 @@ chapter with Azure OpenAI, asks a small LLM to label each paragraph
 live progress, and listen to the result. Authentication is passwordless
 (Entra ID) in production with an opt-in API-key fallback for local development.
 
+## 🖥️ Web UI
+
+The FastAPI + HTMX UI runs on `http://127.0.0.1:8000` after `uv run hearthat ui`.
+It has two pages:
+
+### Audiobooks (home)
+
+![HearThat — Audiobooks page](assets/screenshots/ui-home.png)
+
+The **New audiobook** card invites you to *"Drop in a book, a chapter or notes.
+HearThat reads the atmosphere of every paragraph and narrates it with the right
+tone, pauses and emphasis."* The default form is intentionally short — three
+fields:
+
+- **Source document** — PDF, `.txt` or `.md`, validated client-side against the
+  demo size cap
+- **Voice style** — *Iris — natural narrator (recommended)* (MAI-Voice-1),
+  *Ava — high-definition voice* (DragonHD Omni), or *Alloy — short-form,
+  prompt steerable* (gpt-4o-mini-tts)
+- **Reading depth** — *Smart — best for most books* (`gpt-5.4-mini`),
+  *Fast — quicker but plainer* (`gpt-4.1-mini`) or *Deep — slower, richer
+  phrasing* (`gpt-5.5`)
+
+A collapsible **Advanced voice options** panel exposes two extra overrides
+when needed:
+
+- **Voice name (optional)** — override the default voice for the chosen backend
+- **Mood instruction (optional)** — free-form tone hint that overrides the
+  per-paragraph mood (e.g. *"calm narrator, slightly amused"*)
+
+The **Synthesise** button stays disabled until a valid file is picked. Below
+the form, the **Jobs** table polls live progress over HTMX and exposes inline
+MP3 players plus download links once a job completes.
+
+### Settings
+
+![HearThat — Settings page](assets/screenshots/ui-settings.png)
+
+The **Service connections (demo)** page uses progressive disclosure so a fresh
+demo only has to fill in **three** fields:
+
+- **Essentials** (always open) — Azure OpenAI endpoint, Azure AI Speech
+  endpoint and region. That's all that's required.
+- **Advanced** (collapsed, "Optional" badge) — API version, deployment names,
+  voice overrides, Document Intelligence, Translator and Storage.
+- **Developer — local API keys** (collapsed, "Dev only" badge) — only shown
+  when `HEARTHAT_ENV != prod`; used when `DefaultAzureCredential` can't sign in.
+
+A **Test connections** button (HTMX-powered) issues a lightweight reachability
+check against the configured endpoints and reports ✅ / ⚠️ / ❌ inline.
+
+You can also **export** the current configuration as a ready-to-edit
+`hearthat.env`, or **import** an existing `.env`. Ticking *Remember these
+values for next time* persists changes to a local `.env`.
+
 ## ✨ Features
 
 - 📄 **Multi-format ingestion** — PDF via **Azure AI Document Intelligence** (`prebuilt-layout`, with `pypdf` fallback), plus native `.txt` and `.md`, with demo upload limits and inline file validation

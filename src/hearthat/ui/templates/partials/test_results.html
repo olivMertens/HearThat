@@ -1,0 +1,29 @@
+<ul class="space-y-1 text-sm">
+  {% for r in results %}
+    {% if r.status == 'ok' %}
+      <li class="flex items-center gap-2 text-emerald-700">
+        <span aria-hidden="true">&#x2705;</span>
+        <span class="font-medium">{{ r.label }}</span>
+        <span class="text-slate-500">— {{ r.message }}</span>
+      </li>
+    {% elif r.status == 'warn' %}
+      <li class="flex items-center gap-2 text-amber-700">
+        <span aria-hidden="true">&#x26A0;&#xFE0F;</span>
+        <span class="font-medium">{{ r.label }}</span>
+        <span class="text-slate-500">— {{ r.message }}</span>
+      </li>
+    {% elif r.status == 'fail' %}
+      <li class="flex items-center gap-2 text-rose-700">
+        <span aria-hidden="true">&#x274C;</span>
+        <span class="font-medium">{{ r.label }}</span>
+        <span class="text-slate-500">— {{ r.message }}</span>
+      </li>
+    {% else %}
+      <li class="flex items-center gap-2 text-slate-500">
+        <span aria-hidden="true">&#x2796;</span>
+        <span class="font-medium">{{ r.label }}</span>
+        <span>— {{ r.message }}</span>
+      </li>
+    {% endif %}
+  {% endfor %}
+</ul>
