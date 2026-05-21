@@ -57,44 +57,40 @@
 
   <form method="post" action="/settings" class="mt-4 space-y-6">
     {% for group in groups %}
-    <fieldset>
-      <legend class="text-sm font-semibold text-slate-700 mb-2">{{ group.title }}</legend>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {% for f in group.fields %}
-        <div>
-          <label class="block text-xs font-medium text-slate-600 mb-1">
-            {{ f.label }}
-            {% if f.value %}
-              <span class="ml-1 inline-block h-2 w-2 rounded-full bg-emerald-500" title="set"></span>
-            {% else %}
-              <span class="ml-1 inline-block h-2 w-2 rounded-full bg-slate-300" title="empty"></span>
-            {% endif %}
-            {% if f.secret %}
-              <span class="ml-1 text-[10px] uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5">dev only</span>
-            {% endif %}
-          </label>
-          {% if f.secret %}
-          <div class="flex gap-2">
-            <input type="password" name="{{ f.name }}" value="{{ f.value }}"
-                   placeholder="paste key (kept locally)"
-                   autocomplete="off"
-                   class="flex-1 rounded border border-slate-300 px-3 py-2 text-sm font-mono focus:border-violet-500 focus:ring-1 focus:ring-violet-400 focus:outline-none secret-input" />
-            <button type="button"
-                    class="px-3 py-2 text-xs rounded border border-slate-300 text-slate-600 hover:bg-slate-50 toggle-secret">
-              Show
-            </button>
-          </div>
-          {% else %}
-          <input type="text" name="{{ f.name }}" value="{{ f.value }}"
-                 placeholder="{{ f.placeholder }}"
-                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-400 focus:outline-none" />
-          {% endif %}
-          {% if f.hint %}<p class="mt-1 text-xs text-slate-400">{{ f.hint }}</p>{% endif %}
+      {% set is_essential = group.tier == 'essential' %}
+      {% set badge_text = 'Dev only' if group.tier == 'dev' else ('Optional' if group.tier == 'advanced' else 'Required') %}
+      {% set badge_class = 'bg-amber-50 text-amber-700 border-amber-200' if group.tier == 'dev' else ('bg-slate-100 text-slate-600 border-slate-200' if group.tier == 'advanced' else 'bg-violet-50 text-violet-700 border-violet-200') %}
+      {% if is_essential %}
+      <fieldset>
+        <legend class="text-sm font-semibold text-slate-700 mb-1 inline-flex items-center gap-2">
+          {{ group.title }}
+          <span class="text-[10px] uppercase tracking-wide border rounded px-1 py-0.5 {{ badge_class }}">{{ badge_text }}</span>
+        </legend>
+        {% if group.subtitle %}<p class="text-xs text-slate-500 mb-2">{{ group.subtitle }}</p>{% endif %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {% for f in group.fields %}
+            {% include "partials/settings_field.html" %}
+          {% endfor %}
         </div>
-        {% endfor %}
-      </div>
-    </fieldset>
+      </fieldset>
+      {% else %}
+      <details class="rounded-md border border-slate-200 bg-slate-50/50 px-4 py-3 group">
+        <summary class="cursor-pointer text-sm font-semibold text-slate-700 inline-flex items-center gap-2 select-none">
+          <span class="group-open:rotate-90 transition-transform inline-block">&#x25B6;</span>
+          {{ group.title }}
+          <span class="text-[10px] uppercase tracking-wide border rounded px-1 py-0.5 {{ badge_class }}">{{ badge_text }}</span>
+        </summary>
+        {% if group.subtitle %}<p class="text-xs text-slate-500 mt-1 mb-3">{{ group.subtitle }}</p>{% endif %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+          {% for f in group.fields %}
+            {% include "partials/settings_field.html" %}
+          {% endfor %}
+        </div>
+      </details>
+      {% endif %}
     {% endfor %}
+
+    <div id="test-results" class="empty:hidden"></div>
 
     <div class="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
       <label class="inline-flex items-center gap-2 text-sm text-slate-700">
@@ -102,6 +98,18 @@
                class="rounded border-slate-300 text-violet-600 focus:ring-violet-500" />
         Remember these values for next time
       </label>
+      <button type="button"
+              hx-post="/settings/test"
+              hx-target="#test-results"
+              hx-swap="innerHTML"
+              hx-indicator="#test-spinner"
+              class="btn-secondary text-sm inline-flex items-center gap-2">
+        <svg id="test-spinner" class="animate-spin h-3 w-3 htmx-indicator" viewBox="0 0 24 24" fill="none">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="3" stroke-opacity="0.3"></circle>
+          <path d="M22 12a10 10 0 0 1-10 10" stroke="currentColor" stroke-width="3" stroke-linecap="round"></path>
+        </svg>
+        Test connections
+      </button>
       <div class="flex-1"></div>
       <a href="/" class="btn-secondary">Cancel</a>
       <button type="submit" class="btn-primary">Save</button>

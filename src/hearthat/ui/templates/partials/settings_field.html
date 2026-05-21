@@ -1,0 +1,30 @@
+<div>
+  <label class="block text-xs font-medium text-slate-600 mb-1">
+    {{ f.label }}
+    {% if f.value %}
+      <span class="ml-1 inline-block h-2 w-2 rounded-full bg-emerald-500" title="set"></span>
+    {% else %}
+      <span class="ml-1 inline-block h-2 w-2 rounded-full bg-slate-300" title="empty"></span>
+    {% endif %}
+    {% if f.secret %}
+      <span class="ml-1 text-[10px] uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded px-1 py-0.5">dev only</span>
+    {% endif %}
+  </label>
+  {% if f.secret %}
+  <div class="flex gap-2">
+    <input type="password" name="{{ f.name }}" value="{{ f.value }}"
+           placeholder="paste key (kept locally)"
+           autocomplete="off"
+           class="flex-1 rounded border border-slate-300 px-3 py-2 text-sm font-mono focus:border-violet-500 focus:ring-1 focus:ring-violet-400 focus:outline-none secret-input" />
+    <button type="button"
+            class="px-3 py-2 text-xs rounded border border-slate-300 text-slate-600 hover:bg-slate-50 toggle-secret">
+      Show
+    </button>
+  </div>
+  {% else %}
+  <input type="text" name="{{ f.name }}" value="{{ f.value }}"
+         placeholder="{{ f.placeholder }}"
+         class="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-violet-500 focus:ring-1 focus:ring-violet-400 focus:outline-none" />
+  {% endif %}
+  {% if f.hint %}<p class="mt-1 text-xs text-slate-400">{{ f.hint }}</p>{% endif %}
+</div>

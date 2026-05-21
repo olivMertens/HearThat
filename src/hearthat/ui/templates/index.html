@@ -34,7 +34,7 @@
       </p>
       <p id="file-feedback" class="mt-1 text-xs hidden"></p>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
       <div>
         <label class="block text-sm font-medium mb-1">Voice style</label>
         <select id="job-backend" name="backend"
@@ -49,13 +49,6 @@
         </p>
       </div>
       <div>
-        <label class="block text-sm font-medium mb-1">Voice name (optional)</label>
-        <input type="text" name="voice_name"
-               placeholder="{{ default_voice }}"
-               class="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
-        <p class="mt-1 text-xs text-slate-400">Leave empty to use the recommended voice.</p>
-      </div>
-      <div>
         <label class="block text-sm font-medium mb-1">Reading depth</label>
         <select name="summary_model"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -65,17 +58,31 @@
         </select>
       </div>
     </div>
-    <div>
-      <label class="block text-sm font-medium mb-1">
-        Mood instruction <span class="text-xs text-slate-500">(optional)</span>
-      </label>
-      <input type="text" name="style"
-             placeholder="e.g. calm narrator, slightly amused"
-             class="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
-      <p class="mt-1 text-xs text-slate-400">
-        HearThat already detects mood per paragraph; this overrides the overall tone.
-      </p>
-    </div>
+    <details class="rounded-md border border-slate-200 bg-slate-50/50 px-4 py-2 group">
+      <summary class="cursor-pointer text-sm font-medium text-slate-700 inline-flex items-center gap-2 select-none">
+        <span class="group-open:rotate-90 transition-transform inline-block">&#x25B6;</span>
+        Advanced voice options
+        <span class="text-xs text-slate-400 font-normal">— override voice or mood</span>
+      </summary>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Voice name (optional)</label>
+          <input type="text" name="voice_name"
+                 placeholder="{{ default_voice }}"
+                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
+          <p class="mt-1 text-xs text-slate-400">Leave empty to use the recommended voice.</p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Mood instruction (optional)</label>
+          <input type="text" name="style"
+                 placeholder="e.g. calm narrator, slightly amused"
+                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm" />
+          <p class="mt-1 text-xs text-slate-400">
+            HearThat already detects mood per paragraph; this overrides the overall tone.
+          </p>
+        </div>
+      </div>
+    </details>
     <div class="flex items-center gap-3">
       <button id="job-submit" type="submit"
               class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"

@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 
+import httpx
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -123,7 +124,10 @@ async def healthz() -> dict[str, str]:
 
 _SETTINGS_GROUPS: list[dict[str, object]] = [
     {
-        "title": "Azure OpenAI in Microsoft Foundry",
+        "title": "Essentials",
+        "tier": "essential",
+        "subtitle": "The bare minimum to run a HearThat demo — endpoints only, "
+        "credentials come from Entra ID.",
         "fields": [
             (
                 "AZURE_OPENAI_ENDPOINT",
@@ -132,6 +136,28 @@ _SETTINGS_GROUPS: list[dict[str, object]] = [
                 "Foundry / Azure OpenAI resource endpoint used for summaries and scene analysis.",
                 False,
             ),
+            (
+                "AZURE_SPEECH_ENDPOINT",
+                "Azure AI Speech endpoint",
+                "https://eastus.api.cognitive.microsoft.com/",
+                "Used for Batch Synthesis (MAI-Voice-1 and DragonHD voices).",
+                False,
+            ),
+            (
+                "AZURE_SPEECH_REGION",
+                "Azure AI Speech region",
+                "eastus",
+                "MAI-Voice-1 (preview) is currently only available in East US.",
+                False,
+            ),
+        ],
+    },
+    {
+        "title": "Advanced",
+        "tier": "advanced",
+        "subtitle": "Tune deployments, voices and optional services. "
+        "Defaults work for most demos.",
+        "fields": [
             (
                 "AZURE_OPENAI_API_VERSION",
                 "Azure OpenAI API version",
@@ -143,7 +169,7 @@ _SETTINGS_GROUPS: list[dict[str, object]] = [
                 "AZURE_OPENAI_DEPLOYMENT_SUMMARY",
                 "Summary deployment",
                 "gpt-5.4-mini",
-                "Azure OpenAI deployment name used for chapter summaries and the narration scene plan.",
+                "Azure OpenAI deployment used for chapter summaries and the narration scene plan.",
                 False,
             ),
             (
@@ -161,32 +187,6 @@ _SETTINGS_GROUPS: list[dict[str, object]] = [
                 False,
             ),
             (
-                "AZURE_OPENAI_API_KEY",
-                "Azure OpenAI key (development only)",
-                "",
-                "Optional. Used locally when DefaultAzureCredential can't sign in.",
-                True,
-            ),
-        ],
-    },
-    {
-        "title": "Azure AI Speech",
-        "fields": [
-            (
-                "AZURE_SPEECH_ENDPOINT",
-                "Speech resource endpoint",
-                "https://eastus.api.cognitive.microsoft.com/",
-                "Azure AI Speech endpoint used for Batch Synthesis (MAI-Voice-1 and DragonHD voices).",
-                False,
-            ),
-            (
-                "AZURE_SPEECH_REGION",
-                "Speech region",
-                "eastus",
-                "MAI-Voice-1 (preview) is currently only available in East US.",
-                False,
-            ),
-            (
                 "HEARTHAT_DEFAULT_VOICE",
                 "Default voice (MAI-Voice-1)",
                 "en-us-Iris:MAI-Voice-1",
@@ -201,51 +201,61 @@ _SETTINGS_GROUPS: list[dict[str, object]] = [
                 False,
             ),
             (
-                "AZURE_SPEECH_API_KEY",
-                "Azure AI Speech key (development only)",
-                "",
-                "Optional. Used locally when DefaultAzureCredential can't sign in.",
-                True,
-            ),
-        ],
-    },
-    {
-        "title": "Azure AI Document Intelligence & Azure AI Translator",
-        "fields": [
-            (
                 "AZURE_DOCINTEL_ENDPOINT",
                 "Document Intelligence endpoint",
                 "https://<your-docintel>.cognitiveservices.azure.com/",
-                "Azure AI Document Intelligence (prebuilt-layout) for PDF extraction. Optional — pypdf is used as a fallback.",
+                "Optional — pypdf is used as a fallback for PDF extraction.",
                 False,
-            ),
-            (
-                "AZURE_DOCINTEL_API_KEY",
-                "Document Intelligence key (development only)",
-                "",
-                "Optional. Used locally when DefaultAzureCredential can't sign in.",
-                True,
             ),
             (
                 "AZURE_TRANSLATOR_ENDPOINT",
                 "Translator endpoint",
                 "https://<your-translator>.cognitiveservices.azure.com/",
-                "Azure AI Translator (Document Translation 1.1). Optional — only needed for translated audiobooks.",
+                "Optional — only needed for translated audiobooks (notebook 03).",
                 False,
-            ),
-            (
-                "AZURE_TRANSLATOR_API_KEY",
-                "Translator key (development only)",
-                "",
-                "Optional. Used locally when DefaultAzureCredential can't sign in.",
-                True,
             ),
             (
                 "AZURE_STORAGE_ACCOUNT_NAME",
                 "Azure Storage account name",
                 "mystorageacct",
-                "Optional. Azure Blob Storage account used by Document Translation for source/target containers.",
+                "Optional — Document Translation needs source/target Blob containers.",
                 False,
+            ),
+        ],
+    },
+    {
+        "title": "Developer — local API keys",
+        "tier": "dev",
+        "subtitle": "Only used when DefaultAzureCredential can't sign in. "
+        "Hidden when HEARTHAT_ENV=prod.",
+        "fields": [
+            (
+                "AZURE_OPENAI_API_KEY",
+                "Azure OpenAI key",
+                "",
+                "Optional. Stored locally only.",
+                True,
+            ),
+            (
+                "AZURE_SPEECH_API_KEY",
+                "Azure AI Speech key",
+                "",
+                "Optional. Stored locally only.",
+                True,
+            ),
+            (
+                "AZURE_DOCINTEL_API_KEY",
+                "Document Intelligence key",
+                "",
+                "Optional. Stored locally only.",
+                True,
+            ),
+            (
+                "AZURE_TRANSLATOR_API_KEY",
+                "Translator key",
+                "",
+                "Optional. Stored locally only.",
+                True,
             ),
         ],
     },
@@ -268,12 +278,14 @@ def _build_groups(settings: Settings) -> list[dict[str, object]]:
     dump = {k.upper(): v for k, v in settings.model_dump().items()}
     out: list[dict[str, object]] = []
     for group in _SETTINGS_GROUPS:
+        tier = str(group.get("tier", "advanced"))
+        if tier == "dev" and not settings.is_dev:
+            continue
         fields = []
         for entry in group["fields"]:  # type: ignore[index]
             name, label, placeholder, hint = entry[0], entry[1], entry[2], entry[3]
             secret = entry[4] if len(entry) > 4 else False
             if secret and not settings.is_dev:
-                # Hide all key fields in production.
                 continue
             value = dump.get(name, "")
             fields.append(
@@ -286,7 +298,16 @@ def _build_groups(settings: Settings) -> list[dict[str, object]]:
                     "secret": bool(secret),
                 }
             )
-        out.append({"title": group["title"], "fields": fields})
+        if not fields:
+            continue
+        out.append(
+            {
+                "title": group["title"],
+                "tier": tier,
+                "subtitle": group.get("subtitle", ""),
+                "fields": fields,
+            }
+        )
     return out
 
 
@@ -358,6 +379,57 @@ async def update_settings_route(request: Request) -> RedirectResponse:
     if persist:
         _persist_env_file(updates, Path(".env"))
     return RedirectResponse(url="/settings?saved=1", status_code=303)
+
+
+@app.post("/settings/test", response_class=HTMLResponse)
+async def test_settings(request: Request) -> HTMLResponse:
+    """Lightweight reachability check for configured endpoints.
+
+    Issues an unauthenticated GET; 2xx, 401, 403 and 404 are all treated as
+    "reachable" (the endpoint exists and answered). Connection or DNS errors
+    surface as failures.
+    """
+    settings = get_settings()
+    targets = [
+        ("Azure OpenAI", settings.azure_openai_endpoint, True),
+        ("Azure AI Speech", settings.azure_speech_endpoint, True),
+        ("Document Intelligence", settings.azure_docintel_endpoint, False),
+        ("Translator", settings.azure_translator_endpoint, False),
+    ]
+    results: list[dict[str, str]] = []
+    async with httpx.AsyncClient(timeout=8.0, follow_redirects=True) as client:
+        for label, url, required in targets:
+            if not url:
+                results.append(
+                    {
+                        "label": label,
+                        "status": "skip",
+                        "message": "Not configured"
+                        + ("" if not required else " (required)"),
+                    }
+                )
+                continue
+            try:
+                r = await client.get(url)
+                ok = r.status_code in (200, 401, 403, 404)
+                results.append(
+                    {
+                        "label": label,
+                        "status": "ok" if ok else "warn",
+                        "message": f"Reachable (HTTP {r.status_code})",
+                    }
+                )
+            except httpx.HTTPError as exc:
+                results.append(
+                    {
+                        "label": label,
+                        "status": "fail",
+                        "message": str(exc)[:120],
+                    }
+                )
+    return TEMPLATES.TemplateResponse(
+        request, "partials/test_results.html", {"results": results}
+    )
 
 
 @app.get("/settings/export")
