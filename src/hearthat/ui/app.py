@@ -100,6 +100,9 @@ async def index(request: Request) -> HTMLResponse:
             "default_voice": settings.hearthat_default_voice,
             "fallback_voice": settings.hearthat_fallback_voice,
             "active_page": "home",
+            "azure_configured": (
+                settings.is_openai_configured and settings.is_speech_configured
+            ),
             "limits": {
                 "max_size_human": human_size(MAX_UPLOAD_BYTES),
                 "max_bytes": MAX_UPLOAD_BYTES,

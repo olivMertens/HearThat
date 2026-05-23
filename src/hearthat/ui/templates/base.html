@@ -7,6 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="{{ url_for('static', path='favicon.svg') }}" />
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/htmx.org@2.0.4" defer></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.css" />
+    <script src="https://cdn.jsdelivr.net/npm/driver.js@1.3.1/dist/driver.js.iife.js" defer></script>
     <style>
       .gradient-bg { background: linear-gradient(135deg, #6D28D9 0%, #06B6D4 100%); }
       .gradient-text {
@@ -44,8 +46,15 @@
           </div>
         </a>
         <nav class="flex items-center gap-5 text-sm">
-          <a href="/" class="nav-link {% if active_page == 'home' %}active{% endif %}">Audiobooks</a>
-          <a href="/settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">Settings</a>
+          <a href="/" data-tour-target="nav-home" class="nav-link {% if active_page == 'home' %}active{% endif %}">Audiobooks</a>
+          <a href="/settings" data-tour-target="nav-settings" class="nav-link {% if active_page == 'settings' %}active{% endif %}">Settings</a>
+          {% if active_page == 'home' %}
+          <button type="button" id="open-tour"
+                  class="nav-link inline-flex items-center gap-1 hover:underline"
+                  title="Take a 60-second tour of HearThat">
+            <span aria-hidden="true">🧭</span> Tour
+          </button>
+          {% endif %}
         </nav>
       </div>
     </header>
