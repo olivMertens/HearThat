@@ -23,6 +23,35 @@ live progress, and listen to the result. Authentication is passwordless
 
 The FastAPI + HTMX UI runs on `http://127.0.0.1:8000` after `uv run hearthat ui`.
 
+### Step 0 — Let the in-app tour show you around
+
+On the **first visit** HearThat detects whether Azure is configured and shows
+one of two banners at the top of the home page.
+
+If Azure isn't configured yet, the **amber setup banner** points you straight
+at Settings and offers a one-click tour:
+
+![HearThat — first-visit setup banner](assets/screenshots/ui-setup-banner.png)
+
+Once Azure is reachable, the same spot shows a **violet welcome banner** with a
+*Start tour* button, and a 9-step guided tour auto-launches the very first
+time:
+
+![HearThat — welcome banner with Start tour](assets/screenshots/ui-welcome-banner.png)
+
+The tour spotlights each part of the UI with a short caption — the header nav,
+the upload field, voice style, reading depth, advanced options and the Jobs
+table — so a new user knows exactly what to click without reading the docs:
+
+![HearThat — guided tour, step 1 of 9](assets/screenshots/ui-tour-welcome.png)
+
+![HearThat — guided tour highlighting the upload field](assets/screenshots/ui-tour-file.png)
+
+The tour is dismissable at any time and won't auto-launch again — a
+`hearthat-tour-seen` flag is stored in `localStorage`. You can replay it
+anytime via the **🧭 Tour** button in the top-right nav. Clearing site data
+resets the flag.
+
 ### Step 1 — Connect HearThat to your Azure resources
 
 Open **Settings** (top-right). On a fresh install only three fields are visible

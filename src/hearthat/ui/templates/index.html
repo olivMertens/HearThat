@@ -1,6 +1,44 @@
 {% extends "base.html" %}
 {% block content %}
-<section class="rounded-xl bg-white p-6 shadow">
+{# ─── Welcome banner ─────────────────────────────────────────────────────── #}
+{% if not azure_configured %}
+<div id="welcome-banner" data-banner-key="setup"
+     class="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 shadow-sm">
+  <span class="text-2xl" aria-hidden="true">⚙️</span>
+  <div class="flex-1">
+    <p class="font-semibold text-amber-900">Connect HearThat to Azure to get started</p>
+    <p class="text-sm text-amber-800 mt-0.5">
+      It takes about 30&nbsp;seconds: paste your Azure OpenAI and Azure AI Speech endpoints in
+      Settings, then come back here to synthesise your first audiobook.
+    </p>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      <a href="/settings" class="btn-primary text-sm">Open Settings</a>
+      <button type="button" id="banner-tour" class="btn-secondary text-sm">Take the tour first</button>
+    </div>
+  </div>
+  <button type="button" class="banner-dismiss text-amber-700 hover:text-amber-900 text-xl leading-none"
+          aria-label="Dismiss">&times;</button>
+</div>
+{% else %}
+<div id="welcome-banner" data-banner-key="welcome"
+     class="hidden flex items-start gap-3 rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 shadow-sm">
+  <span class="text-2xl" aria-hidden="true">👋</span>
+  <div class="flex-1">
+    <p class="font-semibold text-violet-900">First time here?</p>
+    <p class="text-sm text-violet-800 mt-0.5">
+      HearThat turns PDFs, plain text and Markdown into audiobooks narrated by Azure AI voices.
+      Take a 60-second tour to see how it works.
+    </p>
+    <div class="mt-3 flex flex-wrap items-center gap-2">
+      <button type="button" id="banner-tour" class="btn-primary text-sm">Start tour</button>
+    </div>
+  </div>
+  <button type="button" class="banner-dismiss text-violet-700 hover:text-violet-900 text-xl leading-none"
+          aria-label="Dismiss">&times;</button>
+</div>
+{% endif %}
+
+<section class="rounded-xl bg-white p-6 shadow" data-tour-target="form-card">
   <div class="flex items-start justify-between gap-4 mb-4">
     <div>
       <h2 class="text-lg font-semibold">New audiobook</h2>
@@ -9,7 +47,8 @@
         and narrates it with the right tone, pauses and emphasis.
       </p>
     </div>
-    <span class="text-xs px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200 whitespace-nowrap">
+    <span data-tour-target="limits-pill"
+          class="text-xs px-2 py-1 rounded-full bg-violet-50 text-violet-700 border border-violet-200 whitespace-nowrap">
       Demo limits · {{ limits.max_size_human }} · up to {{ limits.max_pdf_pages }} PDF pages · up to {{ "{:,}".format(limits.max_text_chars) }} characters
     </span>
   </div>
@@ -22,7 +61,7 @@
     hx-encoding="multipart/form-data"
     class="space-y-4"
   >
-    <div>
+    <div data-tour-target="file-field">
       <label class="block text-sm font-medium mb-1">Source document</label>
       <input id="job-file" type="file" name="pdf"
              accept=".pdf,.txt,.md,.markdown,application/pdf,text/plain,text/markdown"
@@ -35,7 +74,7 @@
       <p id="file-feedback" class="mt-1 text-xs hidden"></p>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div>
+      <div data-tour-target="voice-style">
         <label class="block text-sm font-medium mb-1">Voice style</label>
         <select id="job-backend" name="backend"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -48,7 +87,7 @@
           for quick previews under {{ "{:,}".format(limits.max_openai_chars) }} characters.
         </p>
       </div>
-      <div>
+      <div data-tour-target="reading-depth">
         <label class="block text-sm font-medium mb-1">Reading depth</label>
         <select name="summary_model"
                 class="w-full rounded border border-slate-300 px-3 py-2 text-sm">
@@ -58,7 +97,8 @@
         </select>
       </div>
     </div>
-    <details class="rounded-md border border-slate-200 bg-slate-50/50 px-4 py-2 group">
+    <details data-tour-target="advanced-options"
+             class="rounded-md border border-slate-200 bg-slate-50/50 px-4 py-2 group">
       <summary class="cursor-pointer text-sm font-medium text-slate-700 inline-flex items-center gap-2 select-none">
         <span class="group-open:rotate-90 transition-transform inline-block">&#x25B6;</span>
         Advanced voice options
@@ -83,7 +123,7 @@
         </div>
       </div>
     </details>
-    <div class="flex items-center gap-3">
+    <div class="flex items-center gap-3" data-tour-target="synthesise">
       <button id="job-submit" type="submit"
               class="btn-primary disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center gap-2"
               disabled>
@@ -102,7 +142,7 @@
   </p>
 </section>
 
-<section class="rounded-xl bg-white p-6 shadow">
+<section data-tour-target="jobs-section" class="rounded-xl bg-white p-6 shadow">
   <h2 class="text-lg font-semibold mb-4">Jobs</h2>
   <table class="min-w-full text-sm">
     <thead class="text-left text-slate-500 border-b">
@@ -203,6 +243,175 @@
     });
 
     validate();
+  })();
+</script>
+
+<script>
+  // ─── Welcome banner dismissal ───────────────────────────────────────────
+  (function () {
+    const banner = document.getElementById("welcome-banner");
+    if (!banner) return;
+    const key = "hearthat-banner-" + banner.dataset.bannerKey;
+    if (localStorage.getItem(key) === "dismissed") {
+      banner.classList.add("hidden");
+    } else if (banner.dataset.bannerKey === "welcome") {
+      // "Welcome" banner only shows on first visit when Azure is configured.
+      if (localStorage.getItem("hearthat-tour-seen") === "1") {
+        banner.classList.add("hidden");
+      } else {
+        banner.classList.remove("hidden");
+      }
+    }
+    banner.querySelectorAll(".banner-dismiss").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        localStorage.setItem(key, "dismissed");
+        banner.classList.add("hidden");
+      });
+    });
+  })();
+</script>
+
+<script>
+  // ─── Guided tour (Driver.js) ────────────────────────────────────────────
+  (function () {
+    function startTour() {
+      if (!window.driver || !window.driver.js) {
+        console.warn("Driver.js not loaded yet");
+        return;
+      }
+      const driverFactory = window.driver.js.driver;
+      const sel = function (name) { return '[data-tour-target="' + name + '"]'; };
+
+      const tour = driverFactory({
+        showProgress: true,
+        animate: true,
+        allowClose: true,
+        nextBtnText: "Next →",
+        prevBtnText: "← Back",
+        doneBtnText: "Got it! 🎉",
+        progressText: "Step {{ '{{current}}' }} of {{ '{{total}}' }}",
+        onDestroyStarted: function () {
+          localStorage.setItem("hearthat-tour-seen", "1");
+          tour.destroy();
+        },
+        steps: [
+          {
+            popover: {
+              title: "👋 Welcome to HearThat",
+              description:
+                "HearThat turns PDF, plain-text or Markdown books into multi-voice " +
+                "audiobooks using Azure Speech & Azure OpenAI. This 60-second tour will " +
+                "show you everything you need to know.",
+            },
+          },
+          {
+            element: sel("nav-settings"),
+            popover: {
+              title: "1. Connect to Azure (once)",
+              description:
+                "Open <strong>Settings</strong> first. You only need to paste " +
+                "<strong>two endpoints</strong>: Azure OpenAI and Azure AI Speech. " +
+                "Authentication is passwordless via <code>az login</code> — no API key " +
+                "required.",
+              side: "bottom",
+              align: "end",
+            },
+          },
+          {
+            element: sel("file-field"),
+            popover: {
+              title: "2. Drop in your book",
+              description:
+                "Upload a <strong>PDF</strong>, <strong>.txt</strong> or " +
+                "<strong>.md</strong> file. HearThat validates the size client-side " +
+                "before sending it.",
+              side: "bottom",
+            },
+          },
+          {
+            element: sel("voice-style"),
+            popover: {
+              title: "3. Pick a narrator",
+              description:
+                "<strong>Iris</strong> is the natural, expressive default. <strong>Ava</strong> " +
+                "is a high-definition multilingual voice. <strong>Alloy</strong> is short-form " +
+                "and prompt-steerable — great for quick previews.",
+              side: "top",
+            },
+          },
+          {
+            element: sel("reading-depth"),
+            popover: {
+              title: "4. Choose reading depth",
+              description:
+                "How carefully HearThat should analyse your book: <strong>Smart</strong> " +
+                "fits most cases, <strong>Fast</strong> is plainer, <strong>Deep</strong> " +
+                "produces the richest phrasing.",
+              side: "top",
+            },
+          },
+          {
+            element: sel("advanced-options"),
+            popover: {
+              title: "5. (Optional) Fine-tune the voice",
+              description:
+                "Expand this panel to override the voice or add a mood instruction like " +
+                "<em>“calm narrator, slightly amused”</em>.",
+              side: "top",
+            },
+          },
+          {
+            element: sel("synthesise"),
+            popover: {
+              title: "6. Hit Synthesise",
+              description:
+                "The button stays disabled until you pick a valid file. Once enabled, click " +
+                "it to kick off the pipeline.",
+              side: "top",
+            },
+          },
+          {
+            element: sel("jobs-section"),
+            popover: {
+              title: "7. Watch progress and listen",
+              description:
+                "Live status updates appear here as the job moves through " +
+                "<em>Reading the document → Understanding chapters → Narrating</em>. " +
+                "When it's done, you can play and download every chapter inline.",
+              side: "top",
+            },
+          },
+          {
+            popover: {
+              title: "🎉 You're all set",
+              description:
+                "Need this tour again? Click <strong>🧭 Tour</strong> in the header. " +
+                "Have fun narrating!",
+            },
+          },
+        ],
+      });
+
+      tour.drive();
+    }
+
+    function whenReady(fn) {
+      if (window.driver && window.driver.js) fn();
+      else window.addEventListener("load", fn, { once: true });
+    }
+
+    // Buttons that explicitly trigger the tour
+    document.querySelectorAll("#open-tour, #banner-tour").forEach(function (btn) {
+      btn.addEventListener("click", function () { whenReady(startTour); });
+    });
+
+    // Auto-launch on first visit (only when Azure is configured, so the user
+    // can actually follow the steps without getting stuck on a missing endpoint).
+    const seen = localStorage.getItem("hearthat-tour-seen") === "1";
+    const ready = {{ "true" if azure_configured else "false" }};
+    if (!seen && ready) {
+      whenReady(function () { setTimeout(startTour, 600); });
+    }
   })();
 </script>
 {% endblock %}
